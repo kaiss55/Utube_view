@@ -1,3 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Osaka Live Dynamic Grid</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            padding: 10px 20px;
+            background-color: #1f1f1f;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        /* 數量設定欄位 */
+        .count-setting {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        .count-setting label {
+            font-size: 0.9rem;
+            color: #fff;
+            font-weight: bold;
+        }
+        .count-setting input[type="number"] {
+            width: 70px;
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 5px 8px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .count-setting button {
+            background-color: #ff0000;
+            color: #fff;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .count-setting button:hover {
+            background-color: #cc0000;
+        }
+
+        /* 網址輸入框容器 */
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 10px;
+            max-width: 100%;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .input-group label {
+            font-size: 0.85rem;
+            white-space: nowrap;
+            color: #aaa;
+            width: 60px;
+        }
+        .input-group input {
+            flex: 1;
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: #ff0000;
+        }
+
+        /* 影片 Grid 容器 */
+        .grid-container {
+            display: grid;
+            gap: 10px;
+            padding: 10px;
+            flex: 1;
+            height: calc(100vh - 120px); 
+        }
+        .card {
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        .iframe-wrapper {
+            width: 100%;
+            height: 100%;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        @media (max-width: 768px) {
+            .grid-container {
+                grid-template-columns: 1fr !important;
+                grid-template-rows: auto !important;
+                height: auto;
+            }
+            .card {
+                aspect-ratio: 16 / 9;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <!-- 設定影片數量 -->
+        <div class="count-setting">
+            <label for="videoCount">影片數量：</label>
+            <input type="number" id="videoCount" min="1" max="16" value="6">
+            <button onclick="changeCount()">更新數量</button>
+        </div>
+
+        <!-- 動態生成的 Input 區域 -->
+        <div class="controls" id="controlsContainer"></div>
+    </header>
+
+    <!-- 動態生成的 影片 區域 -->
+    <div class="grid-container" id="gridContainer"></div>
+
+
     <script>
         // 預設的 6 個示範影片 ID
         const DEFAULT_VIDEOS = [
@@ -164,3 +317,5 @@
         // 啟動
         init();
     </script>
+</body>
+</html>
