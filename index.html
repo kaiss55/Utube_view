@@ -103,7 +103,6 @@
             gap: 10px;
             padding: 10px;
             flex: 1;
-            /* 預設高度扣除 Header 預估高度 */
             height: calc(100vh - 120px); 
         }
         .card {
@@ -173,7 +172,7 @@
             return (match && match[2].length === 11) ? match[2] : url.trim();
         }
 
-        // 根據影片總數計算適當的 Grid 欄與列數量
+        // 根據影片總數計算 Grid 欄與列
         function autoCalculateGrid(count) {
             let cols = 2;
             let rows = 2;
@@ -191,20 +190,33 @@
             gridContainer.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
         }
 
-        // 初始化：讀取 URL 參數，生成 UI
+        // 初始化：優先順序 網址參數 -> LocalStorage -> 預設值
         function init() {
             const urlParams = new URLSearchParams(window.location.search);
             const vParam = urlParams.get('v');
+            const savedVideos = localStorage.getItem('osaka_live_videos');
 
             if (vParam) {
+                // 優先使用 URL 帶入的參數
                 const paramIds = vParam.split(',').filter(id => id.trim() !== '');
                 if (paramIds.length > 0) {
                     videoCount = paramIds.length;
                     currentVideos = paramIds;
                 }
+            } else if (savedVideos) {
+                // 若 URL 沒有參數，讀取瀏覽器本機快存 (LocalStorage)
+                try {
+                    const parsed = JSON.parse(savedVideos);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        currentVideos = parsed;
+                        videoCount = currentVideos.length;
+                    }
+                } catch (e) {
+                    console.error('無效的 LocalStorage 資料', e);
+                }
             }
 
-            // 如果 currentVideos 不夠數，補充預設值或留空
+            // 如果 currentVideos 長度低於設定的 videoCount，補充預設值或留空
             while (currentVideos.length < videoCount) {
                 const nextIdx = currentVideos.length;
                 currentVideos.push(DEFAULT_VIDEOS[nextIdx] || '');
@@ -212,6 +224,7 @@
 
             document.getElementById('videoCount').value = videoCount;
             renderDOM();
+            saveData(); // 確保 state 同步存入本機與 URL
         }
 
         // 修改影片數量時呼叫
@@ -232,10 +245,10 @@
             }
 
             renderDOM();
-            updateURL();
+            saveData();
         }
 
-        // 重新繪製介面 (Input 欄位 & 影片播放器)
+        // 重新繪製介面
         function renderDOM() {
             const controlsContainer = document.getElementById('controlsContainer');
             const gridContainer = document.getElementById('gridContainer');
@@ -243,7 +256,6 @@
             controlsContainer.innerHTML = '';
             gridContainer.innerHTML = '';
 
-            // 更新 Grid 排版
             autoCalculateGrid(videoCount);
 
             for (let i = 0; i < videoCount; i++) {
@@ -267,7 +279,6 @@
                 card.innerHTML = `<div class="iframe-wrapper" id="player${i}"></div>`;
                 gridContainer.appendChild(card);
 
-                // 渲染 Iframe
                 renderPlayer(i, videoId);
             }
         }
@@ -292,11 +303,15 @@
             const videoId = extractVideoId(value);
             currentVideos[index] = videoId;
             renderPlayer(index, videoId);
-            updateURL();
+            saveData();
         }
 
-        // 更新網址 Query Parameter (?v=ID1,ID2,ID3...)
-        function updateURL() {
+        // 儲存資料到 LocalStorage 及同步更新 URL
+        function saveData() {
+            // 1. 存入瀏覽器本機記憶庫
+            localStorage.setItem('osaka_live_videos', JSON.stringify(currentVideos));
+
+            // 2. 同步更新 URL 網址列 (方便分享)
             const newParams = new URLSearchParams();
             newParams.set('v', currentVideos.join(','));
             const newRelativePathQuery = window.location.pathname + '?' + newParams.toString();
