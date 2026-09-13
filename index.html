@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Osaka Live Dynamic Grid</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            padding: 10px 20px;
+            background-color: #1f1f1f;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        /* 數量設定欄位 */
+        .count-setting {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        .count-setting label {
+            font-size: 0.9rem;
+            color: #fff;
+            font-weight: bold;
+        }
+        .count-setting input[type="number"] {
+            width: 70px;
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 5px 8px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .count-setting button {
+            background-color: #ff0000;
+            color: #fff;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .count-setting button:hover {
+            background-color: #cc0000;
+        }
+
+        /* 網址輸入框容器 */
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 10px;
+            max-width: 100%;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .input-group label {
+            font-size: 0.85rem;
+            white-space: nowrap;
+            color: #aaa;
+            width: 60px;
+        }
+        .input-group input {
+            flex: 1;
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: #ff0000;
+        }
+
+        /* 影片 Grid 容器 */
+        .grid-container {
+            display: grid;
+            gap: 10px;
+            padding: 10px;
+            flex: 1;
+            /* 預設高度扣除 Header 預估高度 */
+            height: calc(100vh - 120px); 
+        }
+        .card {
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        .iframe-wrapper {
+            width: 100%;
+            height: 100%;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        @media (max-width: 768px) {
+            .grid-container {
+                grid-template-columns: 1fr !important;
+                grid-template-rows: auto !important;
+                height: auto;
+            }
+            .card {
+                aspect-ratio: 16 / 9;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <!-- 設定影片數量 -->
+        <div class="count-setting">
+            <label for="videoCount">影片數量：</label>
+            <input type="number" id="videoCount" min="1" max="16" value="4">
+            <button onclick="changeCount()">更新數量</button>
+        </div>
+
+        <!-- 動態生成的 Input 區域 -->
+        <div class="controls" id="controlsContainer"></div>
+    </header>
+
+    <!-- 動態生成的 影片 區域 -->
+    <div class="grid-container" id="gridContainer"></div>
+
+    <script>
+        // 預設的示範影片 ID
+        const DEFAULT_VIDEOS = [
+            'cUnYPpK7ENk', // 清水坂
+            'J3xHBUgWRqc', // 祇園 花見小路
+            'MMeBDRfRHyA', // 伏見稻荷大社
+            'i2PpmC1IeKk', // 道頓堀
+            '5wX3G5oH9L0', // 預備 5
+            'xT1037Y61lU'  // 預備 6
+        ];
+
+        let videoCount = 4;
+        let currentVideos = [];
+
+        // 解析 YouTube 網址或 ID
+        function extractVideoId(url) {
+            if (!url) return '';
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|live\/)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : url.trim();
+        }
+
+        // 根據影片總數計算適當的 Grid 欄與列數量
+        function autoCalculateGrid(count) {
+            let cols = 2;
+            let rows = 2;
+
+            if (count === 1) { cols = 1; rows = 1; }
+            else if (count === 2) { cols = 2; rows = 1; }
+            else if (count <= 4) { cols = 2; rows = 2; }
+            else if (count <= 6) { cols = 3; rows = 2; }
+            else if (count <= 9) { cols = 3; rows = 3; }
+            else if (count <= 12) { cols = 4; rows = 3; }
+            else { cols = 4; rows = 4; }
+
+            const gridContainer = document.getElementById('gridContainer');
+            gridContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            gridContainer.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+        }
+
+        // 初始化：讀取 URL 參數，生成 UI
+        function init() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const vParam = urlParams.get('v');
+
+            if (vParam) {
+                const paramIds = vParam.split(',').filter(id => id.trim() !== '');
+                if (paramIds.length > 0) {
+                    videoCount = paramIds.length;
+                    currentVideos = paramIds;
+                }
+            }
+
+            // 如果 currentVideos 不夠數，補充預設值或留空
+            while (currentVideos.length < videoCount) {
+                const nextIdx = currentVideos.length;
+                currentVideos.push(DEFAULT_VIDEOS[nextIdx] || '');
+            }
+
+            document.getElementById('videoCount').value = videoCount;
+            renderDOM();
+        }
+
+        // 修改影片數量時呼叫
+        function changeCount() {
+            const newCount = parseInt(document.getElementById('videoCount').value, 10);
+            if (isNaN(newCount) || newCount < 1) return;
+
+            videoCount = newCount;
+
+            // 調整 currentVideos 長度
+            if (currentVideos.length < videoCount) {
+                while (currentVideos.length < videoCount) {
+                    const nextIdx = currentVideos.length;
+                    currentVideos.push(DEFAULT_VIDEOS[nextIdx] || '');
+                }
+            } else if (currentVideos.length > videoCount) {
+                currentVideos = currentVideos.slice(0, videoCount);
+            }
+
+            renderDOM();
+            updateURL();
+        }
+
+        // 重新繪製介面 (Input 欄位 & 影片播放器)
+        function renderDOM() {
+            const controlsContainer = document.getElementById('controlsContainer');
+            const gridContainer = document.getElementById('gridContainer');
+
+            controlsContainer.innerHTML = '';
+            gridContainer.innerHTML = '';
+
+            // 更新 Grid 排版
+            autoCalculateGrid(videoCount);
+
+            for (let i = 0; i < videoCount; i++) {
+                const videoId = currentVideos[i] || '';
+                const fullUrl = videoId ? `https://www.youtube.com/watch?v=${videoId}` : '';
+
+                // 1. 動態建立 Input 欄位
+                const inputGroup = document.createElement('div');
+                inputGroup.className = 'input-group';
+                inputGroup.innerHTML = `
+                    <label>視窗 ${i + 1}:</label>
+                    <input type="text" id="input${i}" value="${fullUrl}" 
+                           onchange="updateVideo(${i}, this.value)" 
+                           placeholder="貼上 YouTube 網址或 ID">
+                `;
+                controlsContainer.appendChild(inputGroup);
+
+                // 2. 動態建立 Card 與 Iframe 播放器
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `<div class="iframe-wrapper" id="player${i}"></div>`;
+                gridContainer.appendChild(card);
+
+                // 渲染 Iframe
+                renderPlayer(i, videoId);
+            }
+        }
+
+        // 渲染單個 iframe
+        function renderPlayer(index, videoId) {
+            const container = document.getElementById(`player${index}`);
+            if (!container) return;
+
+            if (!videoId) {
+                container.innerHTML = '';
+                return;
+            }
+            container.innerHTML = `
+                <iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1" 
+                        allow="autoplay; encrypted-media" allowfullscreen></iframe>
+            `;
+        }
+
+        // 輸入框變更時呼叫
+        function updateVideo(index, value) {
+            const videoId = extractVideoId(value);
+            currentVideos[index] = videoId;
+            renderPlayer(index, videoId);
+            updateURL();
+        }
+
+        // 更新網址 Query Parameter (?v=ID1,ID2,ID3...)
+        function updateURL() {
+            const newParams = new URLSearchParams();
+            newParams.set('v', currentVideos.join(','));
+            const newRelativePathQuery = window.location.pathname + '?' + newParams.toString();
+            window.history.replaceState(null, '', newRelativePathQuery);
+        }
+
+        // 啟動
+        init();
+    </script>
+</body>
+</html>
